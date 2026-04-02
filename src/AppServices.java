@@ -2,12 +2,15 @@ public final class AppServices {
     private static AppServices instance;
 
     public final NotificationBus notificationBus = new NotificationBus();
+    public final UserDirectory userDirectory = new UserDirectory();
     public final RoomService roomService = new RoomService();
     public final BookingService bookingService;
+    public final BookingRequestService bookingRequestService;
     public final MaintenanceService maintenanceService;
 
     private AppServices() {
         bookingService = new BookingService(roomService, notificationBus);
+        bookingRequestService = new BookingRequestService(roomService, bookingService, notificationBus);
         maintenanceService = new MaintenanceService(notificationBus);
         seedRooms();
     }

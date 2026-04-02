@@ -11,6 +11,9 @@ public class NotificationBus {
     /** Recipients with this key are delivered to every admin session listener. */
     public static final String ADMINS_BROADCAST = "@admins";
 
+    /** Campus-wide announcements to all student sessions. */
+    public static final String STUDENTS_BROADCAST = "@students";
+
     private final List<NotificationListener> listeners = new CopyOnWriteArrayList<>();
 
     public void subscribe(NotificationListener listener) {
