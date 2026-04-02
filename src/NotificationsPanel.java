@@ -5,8 +5,8 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -35,17 +35,26 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         add(new JScrollPane(list), BorderLayout.CENTER);
 
+        if (session.isStudent()) {
+            JLabel hint = new JLabel("<html><i>Announcements from administrators and your booking updates appear here.</i></html>");
+            hint.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+            add(hint, BorderLayout.SOUTH);
+            return;
+        }
+
         JPanel south = new JPanel(new BorderLayout(8, 8));
         south.setBorder(BorderFactory.createTitledBorder("Messaging"));
 
-        JPanel msgRow = new JPanel(new BorderLayout(4, 4));
         if (session.isAdmin()) {
+            JPanel direct = new JPanel(new BorderLayout(4, 4));
+            direct.setBorder(BorderFactory.createTitledBorder("Message one user"));
+            JPanel msgRow = new JPanel(new BorderLayout(4, 4));
             msgRow.add(new JLabel("To username:"), BorderLayout.WEST);
             JTextField toField = new JTextField(12);
             msgRow.add(toField, BorderLayout.CENTER);
             JTextArea body = new JTextArea(3, 40);
-            south.add(msgRow, BorderLayout.NORTH);
-            south.add(new JScrollPane(body), BorderLayout.CENTER);
+            direct.add(msgRow, BorderLayout.NORTH);
+            direct.add(new JScrollPane(body), BorderLayout.CENTER);
             JButton send = new JButton("Send to user");
             send.addActionListener(e -> {
                 String u = toField.getText().trim();
@@ -62,8 +71,33 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
             });
             JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             bp.add(send);
-            south.add(bp, BorderLayout.SOUTH);
-        } else {
+            direct.add(bp, BorderLayout.SOUTH);
+
+            JPanel announce = new JPanel(new BorderLayout(4, 4));
+            announce.setBorder(BorderFactory.createTitledBorder("Announcement (all students)"));
+            JTextArea annBody = new JTextArea(3, 40);
+            announce.add(new JScrollPane(annBody), BorderLayout.CENTER);
+            JButton broadcast = new JButton("Send to all students");
+            broadcast.addActionListener(e -> {
+                String t = annBody.getText().trim();
+                if (t.isEmpty()) {
+                    return;
+                }
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                app.notificationBus.publish(new Notification(
+                        NotificationBus.STUDENTS_BROADCAST,
+                        "Campus announcement",
+                        t,
+                        now));
+                annBody.setText("");
+            });
+            JPanel bp2 = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            bp2.add(broadcast);
+            announce.add(bp2, BorderLayout.SOUTH);
+
+            south.add(direct, BorderLayout.NORTH);
+            south.add(announce, BorderLayout.CENTER);
+        } else if (session.isStaff()) {
             JTextArea body = new JTextArea(3, 40);
             south.add(new JLabel("Send a note to administrators:"), BorderLayout.NORTH);
             south.add(new JScrollPane(body), BorderLayout.CENTER);
@@ -76,7 +110,7 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
                 java.time.LocalDateTime now = java.time.LocalDateTime.now();
                 app.notificationBus.publish(new Notification(
                         NotificationBus.ADMINS_BROADCAST,
-                        "User note from " + session.username(),
+                        "Staff note from " + session.username(),
                         t,
                         now));
                 app.notificationBus.publish(new Notification(
@@ -98,7 +132,10 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
         if (session.username().equals(n.recipientKey())) {
             return true;
         }
-        return NotificationBus.ADMINS_BROADCAST.equals(n.recipientKey()) && session.isAdmin();
+        if (NotificationBus.ADMINS_BROADCAST.equals(n.recipientKey()) && session.isAdmin()) {
+            return true;
+        }
+        return NotificationBus.STUDENTS_BROADCAST.equals(n.recipientKey()) && session.isStudent();
     }
 
     @Override
