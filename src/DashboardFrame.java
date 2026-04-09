@@ -14,13 +14,13 @@ import javax.swing.WindowConstants;
 
 public class DashboardFrame extends JFrame {
 
-    private final AppServices app;
+    private final CampusManagementFacade campus;
     private final NotificationsPanel notificationsPanel;
     private boolean notificationsDetached;
 
-    public DashboardFrame(Session session, AppServices app) {
+    public DashboardFrame(Session session, CampusManagementFacade campus) {
         super("Campus dashboard");
-        this.app = app;
+        this.campus = campus;
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setSize(960, 640);
 
@@ -39,20 +39,20 @@ public class DashboardFrame extends JFrame {
         headerBar.add(east, BorderLayout.EAST);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Rooms", new RoomsPanel(session, app));
+        tabs.addTab("Rooms", new RoomsPanel(session, campus));
 
         if (session.seesMaintenanceFeatures()) {
-            tabs.addTab("Maintenance", new MaintenancePanel(session, app));
+            tabs.addTab("Maintenance", new MaintenancePanel(session, campus));
         }
 
         if (session.seesUserManagement()) {
-            tabs.addTab("User management", new UsersPanel(session, app));
+            tabs.addTab("User management", new UsersPanel(session, campus));
         }
 
-        notificationsPanel = new NotificationsPanel(session, app);
+        notificationsPanel = new NotificationsPanel(session, campus);
         tabs.addTab(session.isStudent() ? "Announcements & messages" : "Notifications & messaging",
                 notificationsPanel);
-        app.notificationBus.subscribe(notificationsPanel);
+        campus.notificationBus.subscribe(notificationsPanel);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -69,7 +69,7 @@ public class DashboardFrame extends JFrame {
     private void detachNotifications() {
         if (!notificationsDetached) {
             notificationsDetached = true;
-            app.notificationBus.unsubscribe(notificationsPanel);
+            campus.notificationBus.unsubscribe(notificationsPanel);
         }
     }
 
@@ -77,7 +77,8 @@ public class DashboardFrame extends JFrame {
         detachNotifications();
         dispose();
         SwingUtilities.invokeLater(() -> {
-            LoginFrame login = new LoginFrame(app);
+            Authenticator auth = new UserDirectoryAuthenticator(campus.userDirectory);
+            LoginFrame login = new LoginFrame(auth, campus);
             login.setVisible(true);
         });
     }

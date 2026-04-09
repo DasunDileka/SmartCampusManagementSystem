@@ -10,8 +10,10 @@ public class Main {
         }
 
         AppServices app = AppServices.get();
+        CampusManagementFacade campus = new CampusManagementFacade(app);
+        Authenticator auth = new UserDirectoryAuthenticator(app.userDirectory);
         SwingUtilities.invokeLater(() -> {
-            LoginFrame frame = new LoginFrame(app);
+            LoginFrame frame = new LoginFrame(auth, campus);
             frame.setVisible(true);
         });
     }

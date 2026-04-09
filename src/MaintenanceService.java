@@ -17,16 +17,18 @@ public class MaintenanceService {
                 ids.next(), roomId, description, urgency, reportedBy,
                 RequestStatus.PENDING, "");
         requests.add(r);
-        notificationBus.publish(new Notification(
-                reportedBy,
-                "Maintenance request submitted",
-                "Request " + r.getId() + " for room " + roomId + ": " + description,
-                LocalDateTime.now()));
-        notificationBus.publish(new Notification(
-                NotificationBus.ADMINS_BROADCAST,
-                "New maintenance request",
-                r.getId() + " — " + roomId + " (" + urgency + "): " + description,
-                LocalDateTime.now()));
+        notificationBus.publish(Notification.builder()
+                .recipientKey(reportedBy)
+                .title("Maintenance request submitted")
+                .body("Request " + r.getId() + " for room " + roomId + ": " + description)
+                .createdAt(LocalDateTime.now())
+                .build());
+        notificationBus.publish(Notification.builder()
+                .recipientKey(NotificationBus.ADMINS_BROADCAST)
+                .title("New maintenance request")
+                .body(r.getId() + " — " + roomId + " (" + urgency + "): " + description)
+                .createdAt(LocalDateTime.now())
+                .build());
         return r;
     }
 
@@ -54,6 +56,9 @@ public class MaintenanceService {
                 r.setAssignedTo(assignedTo.trim());
             }
             if (newStatus != null) {
+                if (!newStatus.isMaintenanceStatus()) {
+                    return Optional.of("Use only PENDING, ASSIGNED, or COMPLETED for maintenance.");
+                }
                 r.setStatus(newStatus);
             }
             if (r.getStatus() == RequestStatus.ASSIGNED
@@ -65,16 +70,18 @@ public class MaintenanceService {
             if (r.getAssignedTo() != null && !r.getAssignedTo().isBlank()) {
                 detail += ", assigned: " + r.getAssignedTo();
             }
-            notificationBus.publish(new Notification(
-                    r.getReportedBy(),
-                    "Maintenance update",
-                    detail,
-                    LocalDateTime.now()));
-            notificationBus.publish(new Notification(
-                    NotificationBus.ADMINS_BROADCAST,
-                    "Maintenance update",
-                    detail,
-                    LocalDateTime.now()));
+            notificationBus.publish(Notification.builder()
+                    .recipientKey(r.getReportedBy())
+                    .title("Maintenance update")
+                    .body(detail)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+            notificationBus.publish(Notification.builder()
+                    .recipientKey(NotificationBus.ADMINS_BROADCAST)
+                    .title("Maintenance update")
+                    .body(detail)
+                    .createdAt(LocalDateTime.now())
+                    .build());
             return Optional.empty();
         }
         return Optional.of("Request not found.");

@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import javax.swing.BorderFactory;
@@ -22,12 +23,12 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final Session session;
-    private final AppServices app;
+    private final CampusManagementFacade campus;
     private final DefaultListModel<String> model = new DefaultListModel<>();
 
-    public NotificationsPanel(Session session, AppServices app) {
+    public NotificationsPanel(Session session, CampusManagementFacade campus) {
         this.session = session;
-        this.app = app;
+        this.campus = campus;
         setLayout(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
@@ -62,11 +63,12 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
                 if (u.isEmpty() || t.isEmpty()) {
                     return;
                 }
-                app.notificationBus.publish(new Notification(
-                        u,
-                        "Message from " + session.username(),
-                        t,
-                        java.time.LocalDateTime.now()));
+                campus.notificationBus.publish(Notification.builder()
+                        .recipientKey(u)
+                        .title("Message from " + session.username())
+                        .body(t)
+                        .createdAt(LocalDateTime.now())
+                        .build());
                 body.setText("");
             });
             JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -83,12 +85,13 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
                 if (t.isEmpty()) {
                     return;
                 }
-                java.time.LocalDateTime now = java.time.LocalDateTime.now();
-                app.notificationBus.publish(new Notification(
-                        NotificationBus.STUDENTS_BROADCAST,
-                        "Campus announcement",
-                        t,
-                        now));
+                LocalDateTime now = LocalDateTime.now();
+                campus.notificationBus.publish(Notification.builder()
+                        .recipientKey(NotificationBus.STUDENTS_BROADCAST)
+                        .title("Campus announcement")
+                        .body(t)
+                        .createdAt(now)
+                        .build());
                 annBody.setText("");
             });
             JPanel bp2 = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -107,17 +110,19 @@ public class NotificationsPanel extends JPanel implements NotificationListener {
                 if (t.isEmpty()) {
                     return;
                 }
-                java.time.LocalDateTime now = java.time.LocalDateTime.now();
-                app.notificationBus.publish(new Notification(
-                        NotificationBus.ADMINS_BROADCAST,
-                        "Staff note from " + session.username(),
-                        t,
-                        now));
-                app.notificationBus.publish(new Notification(
-                        session.username(),
-                        "Sent to administrators",
-                        t,
-                        now));
+                LocalDateTime now = LocalDateTime.now();
+                campus.notificationBus.publish(Notification.builder()
+                        .recipientKey(NotificationBus.ADMINS_BROADCAST)
+                        .title("Staff note from " + session.username())
+                        .body(t)
+                        .createdAt(now)
+                        .build());
+                campus.notificationBus.publish(Notification.builder()
+                        .recipientKey(session.username())
+                        .title("Sent to administrators")
+                        .body(t)
+                        .createdAt(now)
+                        .build());
                 body.setText("");
             });
             JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));

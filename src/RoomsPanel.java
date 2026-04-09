@@ -28,7 +28,7 @@ import javax.swing.table.DefaultTableModel;
 public class RoomsPanel extends JPanel {
 
     private final Session session;
-    private final AppServices app;
+    private final CampusManagementFacade campus;
     private final DefaultTableModel roomsModel;
     private final DefaultTableModel bookingsModel;
     private DefaultTableModel requestsModel;
@@ -38,9 +38,9 @@ public class RoomsPanel extends JPanel {
     private JTable requestsTable;
     private JTable pendingAdminTable;
 
-    public RoomsPanel(Session session, AppServices app) {
+    public RoomsPanel(Session session, CampusManagementFacade campus) {
         this.session = session;
-        this.app = app;
+        this.campus = campus;
         setLayout(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
@@ -194,8 +194,8 @@ public class RoomsPanel extends JPanel {
         }
         String id = (String) pendingAdminModel.getValueAt(row, 0);
         Optional<String> err = approve
-                ? app.bookingRequestService.approve(id)
-                : app.bookingRequestService.reject(id);
+                ? campus.approvePendingRoomBooking(id)
+                : campus.rejectPendingRoomBooking(id);
         err.ifPresentOrElse(
                 msg -> JOptionPane.showMessageDialog(this, msg, "Request", JOptionPane.WARNING_MESSAGE),
                 () -> {
@@ -210,14 +210,14 @@ public class RoomsPanel extends JPanel {
             return null;
         }
         String id = (String) roomsModel.getValueAt(row, 0);
-        return app.roomService.get(id).orElse(null);
+        return campus.roomService.get(id).orElse(null);
     }
 
     private void refreshRooms() {
         roomsModel.setRowCount(0);
         List<Room> list = session.canManageRooms()
-                ? app.roomService.allRooms()
-                : app.roomService.activeRooms();
+                ? campus.roomService.allRooms()
+                : campus.roomService.activeRooms();
         for (Room r : list) {
             if (session.canManageRooms()) {
                 roomsModel.addRow(new Object[]{
@@ -231,8 +231,8 @@ public class RoomsPanel extends JPanel {
     private void refreshBookings() {
         bookingsModel.setRowCount(0);
         List<Booking> list = session.canManageRooms()
-                ? app.bookingService.allBookings()
-                : app.bookingService.bookingsForUser(session.username());
+                ? campus.bookingService.allBookings()
+                : campus.bookingService.bookingsForUser(session.username());
         for (Booking b : list) {
             bookingsModel.addRow(new Object[]{
                     b.getId(), b.getRoomId(), b.getStart().toString(), b.getEnd().toString(), b.isCancelled()});
@@ -242,7 +242,7 @@ public class RoomsPanel extends JPanel {
     private void refreshBookingRequests() {
         if (session.canManageRooms() && pendingAdminModel != null) {
             pendingAdminModel.setRowCount(0);
-            for (BookingRequest r : app.bookingRequestService.pending()) {
+            for (RoomService.RoomBookingRequest r : campus.roomService.pendingBookingRequests()) {
                 pendingAdminModel.addRow(new Object[]{
                         r.getId(), r.getUsername(), r.getRoomId(),
                         r.getStart().toString(), r.getEnd().toString(), r.getStatus()});
@@ -250,7 +250,7 @@ public class RoomsPanel extends JPanel {
         }
         if (session.canRequestBooking() && requestsModel != null) {
             requestsModel.setRowCount(0);
-            for (BookingRequest r : app.bookingRequestService.forUser(session.username())) {
+            for (RoomService.RoomBookingRequest r : campus.roomService.bookingRequestsForUser(session.username())) {
                 requestsModel.addRow(new Object[]{
                         r.getId(), r.getRoomId(),
                         r.getStart().toString(), r.getEnd().toString(), r.getStatus()});
@@ -311,11 +311,11 @@ public class RoomsPanel extends JPanel {
             }
             String eq = eqField.getText().trim();
             if (existing == null) {
-                if (app.roomService.get(id).isPresent()) {
+                if (campus.roomService.get(id).isPresent()) {
                     JOptionPane.showMessageDialog(d, "Room ID already exists.");
                     return;
                 }
-                app.roomService.addRoom(new Room(id, cap, eq, true));
+                campus.roomService.addRoom(new Room(id, cap, eq, true));
             } else {
                 existing.setCapacity(cap);
                 existing.setEquipment(eq);
@@ -434,12 +434,12 @@ public class RoomsPanel extends JPanel {
             if (directBooking) {
                 if (recurring.isSelected()) {
                     int w = ((Number) weeksSp.getValue()).intValue();
-                    err = app.bookingService.bookRecurring(roomId, session.username(), s, en, w);
+                    err = campus.bookingService.bookRecurring(roomId, session.username(), s, en, w);
                 } else {
-                    err = app.bookingService.book(roomId, session.username(), s, en);
+                    err = campus.bookingService.book(roomId, session.username(), s, en);
                 }
             } else {
-                err = app.bookingRequestService.submit(roomId, session.username(), s, en);
+                err = campus.roomService.submitBookingRequest(roomId, session.username(), s, en);
             }
             if (err.isPresent()) {
                 JOptionPane.showMessageDialog(d, err.get(), "Booking failed", JOptionPane.WARNING_MESSAGE);
@@ -468,7 +468,7 @@ public class RoomsPanel extends JPanel {
             return;
         }
         String id = (String) bookingsModel.getValueAt(row, 0);
-        app.bookingService.cancelBooking(id, session.username(), admin).ifPresentOrElse(
+        campus.bookingService.cancelBooking(id, session.username(), admin).ifPresentOrElse(
                 msg -> JOptionPane.showMessageDialog(this, msg, "Cancel", JOptionPane.WARNING_MESSAGE),
                 this::refreshBookings);
     }

@@ -60,11 +60,12 @@ public class BookingService {
         }
         Booking b = new Booking(ids.next(), roomId, username, start, end);
         bookings.add(b);
-        notificationBus.publish(new Notification(
-                username,
-                "Booking confirmed",
-                "Room " + roomId + " from " + start + " to " + end,
-                LocalDateTime.now()));
+        notificationBus.publish(Notification.builder()
+                .recipientKey(username)
+                .title("Booking confirmed")
+                .body("Room " + roomId + " from " + start + " to " + end)
+                .createdAt(LocalDateTime.now())
+                .build());
         return Optional.empty();
     }
 
@@ -97,11 +98,12 @@ public class BookingService {
             Booking b = new Booking(ids.next(), roomId, username, s, e);
             bookings.add(b);
         }
-        notificationBus.publish(new Notification(
-                username,
-                "Recurring bookings confirmed",
-                weeks + " weekly slot(s) for room " + roomId + " starting " + firstStart,
-                LocalDateTime.now()));
+        notificationBus.publish(Notification.builder()
+                .recipientKey(username)
+                .title("Recurring bookings confirmed")
+                .body(weeks + " weekly slot(s) for room " + roomId + " starting " + firstStart)
+                .createdAt(LocalDateTime.now())
+                .build());
         return Optional.empty();
     }
 
@@ -114,11 +116,12 @@ public class BookingService {
                 return Optional.of("You can only cancel your own bookings.");
             }
             b.setCancelled(true);
-            notificationBus.publish(new Notification(
-                    b.getUsername(),
-                    "Booking cancelled",
-                    "Room " + b.getRoomId() + " " + b.getStart() + " – " + b.getEnd(),
-                    LocalDateTime.now()));
+            notificationBus.publish(Notification.builder()
+                    .recipientKey(b.getUsername())
+                    .title("Booking cancelled")
+                    .body("Room " + b.getRoomId() + " " + b.getStart() + " – " + b.getEnd())
+                    .createdAt(LocalDateTime.now())
+                    .build());
             return Optional.empty();
         }
         return Optional.of("Booking not found.");

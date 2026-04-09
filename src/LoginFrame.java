@@ -26,11 +26,13 @@ public class LoginFrame extends JFrame {
 
     private final JTextField usernameField = new JTextField(20);
     private final JPasswordField passwordField = new JPasswordField(20);
-    private final AppServices app;
+    private final Authenticator authenticator;
+    private final CampusManagementFacade campus;
 
-    public LoginFrame(AppServices app) {
+    public LoginFrame(Authenticator authenticator, CampusManagementFacade campus) {
         super("User Login");
-        this.app = app;
+        this.authenticator = authenticator;
+        this.campus = campus;
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
 
@@ -103,10 +105,10 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        app.userDirectory.authenticate(user, pass).ifPresentOrElse(
+        authenticator.authenticate(user, pass).ifPresentOrElse(
                 session -> {
                     dispose();
-                    SwingOnEdt.openDashboard(session, app);
+                    SwingOnEdt.openDashboard(session, campus);
                 },
                 () -> {
                     JOptionPane.showMessageDialog(this,

@@ -4,9 +4,9 @@ public final class SwingOnEdt {
     private SwingOnEdt() {
     }
 
-    static void openDashboard(Session session, AppServices app) {
+    static void openDashboard(Session session, CampusManagementFacade campus) {
         SwingUtilities.invokeLater(() -> {
-            DashboardFrame dash = new DashboardFrame(session, app);
+            DashboardFrame dash = new DashboardFrame(session, campus);
             dash.setVisible(true);
         });
     }

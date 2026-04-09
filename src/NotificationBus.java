@@ -4,7 +4,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.swing.SwingUtilities;
 
 /**
- * Subject in the Observer pattern: publishes {@link Notification} events to registered listeners.
+ * Observer (behavioural): this class is the <em>subject</em>. It maintains a list of
+ * {@link NotificationListener} observers and notifies them via {@link #publish(Notification)}.
+ * Concrete observers (e.g. {@code NotificationsPanel}) implement {@code NotificationListener#notificationReceived}.
  */
 public class NotificationBus {
 
