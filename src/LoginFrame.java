@@ -6,6 +6,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -17,12 +18,14 @@ import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
 
 /**
- * Demo accounts (change via Administrator → User management after login):
- * admin / password123 — Administrator;
- * staff / secret — Staff member;
- * student / student123 — Student.
+ * Login: admin (password123) = ADMIN; user (secret) = USER.
  */
 public class LoginFrame extends JFrame {
+
+    private static final Map<String, DemoAccount> ACCOUNTS = Map.of(
+            "admin", new DemoAccount("password123", UserRole.ADMIN),
+            "user", new DemoAccount("secret", UserRole.USER)
+    );
 
     private final JTextField usernameField = new JTextField(20);
     private final JPasswordField passwordField = new JPasswordField(20);
@@ -103,18 +106,37 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        app.userDirectory.authenticate(user, pass).ifPresentOrElse(
-                session -> {
-                    dispose();
-                    SwingOnEdt.openDashboard(session, app);
-                },
-                () -> {
-                    JOptionPane.showMessageDialog(this,
-                            "Invalid username or password.",
-                            "Login failed",
-                            JOptionPane.ERROR_MESSAGE);
-                    passwordField.setText("");
-                    passwordField.requestFocusInWindow();
-                });
+        DemoAccount acc = ACCOUNTS.get(user);
+        if (acc == null || !acc.password().equals(pass)) {
+            JOptionPane.showMessageDialog(this,
+                    "Invalid username or password.",
+                    "Login failed",
+                    JOptionPane.ERROR_MESSAGE);
+            passwordField.setText("");
+            passwordField.requestFocusInWindow();
+            return;
+        }
+
+        dispose();
+        Session session = new Session(user, acc.role());
+        SwingOnEdt.openDashboard(session, app);
+    }
+
+    private static final class DemoAccount {
+        private final String password;
+        private final UserRole role;
+
+        DemoAccount(String password, UserRole role) {
+            this.password = password;
+            this.role = role;
+        }
+
+        String password() {
+            return password;
+        }
+
+        UserRole role() {
+            return role;
+        }
     }
 }

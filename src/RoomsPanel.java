@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -27,16 +26,14 @@ import javax.swing.table.DefaultTableModel;
 
 public class RoomsPanel extends JPanel {
 
+    private static final SpinnerDateAdapter BOOKING_DATE = new LegacyDateSpinnerAdapter();
+
     private final Session session;
     private final AppServices app;
     private final DefaultTableModel roomsModel;
     private final DefaultTableModel bookingsModel;
-    private DefaultTableModel requestsModel;
-    private DefaultTableModel pendingAdminModel;
     private final JTable roomsTable;
     private final JTable bookingsTable;
-    private JTable requestsTable;
-    private JTable pendingAdminTable;
 
     public RoomsPanel(Session session, AppServices app) {
         this.session = session;
@@ -44,7 +41,7 @@ public class RoomsPanel extends JPanel {
         setLayout(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
-        String[] roomCols = session.canManageRooms()
+        String[] roomCols = session.isAdmin()
                 ? new String[]{"ID", "Capacity", "Equipment", "Active"}
                 : new String[]{"ID", "Capacity", "Equipment"};
         roomsModel = new DefaultTableModel(roomCols, 0) {
@@ -55,13 +52,11 @@ public class RoomsPanel extends JPanel {
         };
         roomsTable = new JTable(roomsModel);
         JPanel top = new JPanel(new BorderLayout(4, 4));
-        top.setBorder(BorderFactory.createTitledBorder(session.canManageRooms()
-                ? "All rooms"
-                : "Available rooms"));
+        top.setBorder(BorderFactory.createTitledBorder(session.isAdmin() ? "All rooms" : "Available rooms"));
         top.add(new JScrollPane(roomsTable), BorderLayout.CENTER);
 
         JPanel roomButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        if (session.canManageRooms()) {
+        if (session.isAdmin()) {
             JButton add = new JButton("Add room");
             JButton edit = new JButton("Edit");
             JButton deactivate = new JButton("Deactivate");
@@ -85,7 +80,7 @@ public class RoomsPanel extends JPanel {
             roomButtons.add(add);
             roomButtons.add(edit);
             roomButtons.add(deactivate);
-        } else if (session.canBookRoomDirectly()) {
+        } else {
             JButton book = new JButton("Book selected room…");
             book.addActionListener(e -> {
                 Room r = selectedRoom();
@@ -93,63 +88,12 @@ public class RoomsPanel extends JPanel {
                     JOptionPane.showMessageDialog(this, "Select an active room.");
                     return;
                 }
-                showBookingDialog(r.getId(), true);
+                showBookingDialog(r.getId());
             });
             roomButtons.add(book);
-        } else if (session.canRequestBooking()) {
-            JButton req = new JButton("Request booking…");
-            req.addActionListener(e -> {
-                Room r = selectedRoom();
-                if (r == null || !r.isActive()) {
-                    JOptionPane.showMessageDialog(this, "Select an active room.");
-                    return;
-                }
-                showBookingDialog(r.getId(), false);
-            });
-            roomButtons.add(req);
         }
         top.add(roomButtons, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
-
-        JPanel center = new JPanel(new BorderLayout(4, 4));
-
-        if (session.canManageRooms()) {
-            pendingAdminModel = new DefaultTableModel(
-                    new String[]{"ID", "User", "Room", "Start", "End", "Status"}, 0) {
-                @Override
-                public boolean isCellEditable(int row, int column) {
-                    return false;
-                }
-            };
-            pendingAdminTable = new JTable(pendingAdminModel);
-            JPanel pendingWrap = new JPanel(new BorderLayout(4, 4));
-            pendingWrap.setBorder(BorderFactory.createTitledBorder("Pending booking requests"));
-            pendingWrap.add(new JScrollPane(pendingAdminTable), BorderLayout.CENTER);
-            JPanel pbtn = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            JButton approve = new JButton("Approve selected");
-            JButton reject = new JButton("Reject selected");
-            approve.addActionListener(e -> actOnPending(true));
-            reject.addActionListener(e -> actOnPending(false));
-            pbtn.add(approve);
-            pbtn.add(reject);
-            pendingWrap.add(pbtn, BorderLayout.SOUTH);
-            center.add(pendingWrap, BorderLayout.NORTH);
-        }
-
-        if (session.canRequestBooking()) {
-            requestsModel = new DefaultTableModel(
-                    new String[]{"ID", "Room", "Start", "End", "Status"}, 0) {
-                @Override
-                public boolean isCellEditable(int row, int column) {
-                    return false;
-                }
-            };
-            requestsTable = new JTable(requestsModel);
-            JPanel reqWrap = new JPanel(new BorderLayout(4, 4));
-            reqWrap.setBorder(BorderFactory.createTitledBorder("My booking requests"));
-            reqWrap.add(new JScrollPane(requestsTable), BorderLayout.CENTER);
-            center.add(reqWrap, BorderLayout.NORTH);
-        }
 
         String[] bookCols = new String[]{"ID", "Room", "Start", "End", "Cancelled"};
         bookingsModel = new DefaultTableModel(bookCols, 0) {
@@ -161,10 +105,10 @@ public class RoomsPanel extends JPanel {
         bookingsTable = new JTable(bookingsModel);
         JPanel bottom = new JPanel(new BorderLayout(4, 4));
         bottom.setBorder(BorderFactory.createTitledBorder(
-                session.canManageRooms() ? "All bookings" : "My confirmed bookings"));
+                session.isAdmin() ? "All bookings" : "My bookings"));
         bottom.add(new JScrollPane(bookingsTable), BorderLayout.CENTER);
         JPanel bp = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        if (!session.canManageRooms()) {
+        if (!session.isAdmin()) {
             JButton cancel = new JButton("Cancel selected booking");
             cancel.addActionListener(e -> cancelSelectedBooking(false));
             bp.add(cancel);
@@ -174,34 +118,10 @@ public class RoomsPanel extends JPanel {
             bp.add(cancel);
         }
         bottom.add(bp, BorderLayout.SOUTH);
-
-        if (session.canRequestBooking() || session.canManageRooms()) {
-            center.add(bottom, BorderLayout.CENTER);
-            add(center, BorderLayout.CENTER);
-        } else {
-            add(bottom, BorderLayout.CENTER);
-        }
+        add(bottom, BorderLayout.CENTER);
 
         refreshRooms();
         refreshBookings();
-        refreshBookingRequests();
-    }
-
-    private void actOnPending(boolean approve) {
-        int row = pendingAdminTable.getSelectedRow();
-        if (row < 0) {
-            return;
-        }
-        String id = (String) pendingAdminModel.getValueAt(row, 0);
-        Optional<String> err = approve
-                ? app.bookingRequestService.approve(id)
-                : app.bookingRequestService.reject(id);
-        err.ifPresentOrElse(
-                msg -> JOptionPane.showMessageDialog(this, msg, "Request", JOptionPane.WARNING_MESSAGE),
-                () -> {
-                    refreshBookingRequests();
-                    refreshBookings();
-                });
     }
 
     private Room selectedRoom() {
@@ -215,11 +135,9 @@ public class RoomsPanel extends JPanel {
 
     private void refreshRooms() {
         roomsModel.setRowCount(0);
-        List<Room> list = session.canManageRooms()
-                ? app.roomService.allRooms()
-                : app.roomService.activeRooms();
+        List<Room> list = session.isAdmin() ? app.roomService.allRooms() : app.roomService.activeRooms();
         for (Room r : list) {
-            if (session.canManageRooms()) {
+            if (session.isAdmin()) {
                 roomsModel.addRow(new Object[]{
                         r.getId(), r.getCapacity(), r.getEquipment(), r.isActive()});
             } else {
@@ -230,31 +148,12 @@ public class RoomsPanel extends JPanel {
 
     private void refreshBookings() {
         bookingsModel.setRowCount(0);
-        List<Booking> list = session.canManageRooms()
+        List<Booking> list = session.isAdmin()
                 ? app.bookingService.allBookings()
                 : app.bookingService.bookingsForUser(session.username());
         for (Booking b : list) {
             bookingsModel.addRow(new Object[]{
                     b.getId(), b.getRoomId(), b.getStart().toString(), b.getEnd().toString(), b.isCancelled()});
-        }
-    }
-
-    private void refreshBookingRequests() {
-        if (session.canManageRooms() && pendingAdminModel != null) {
-            pendingAdminModel.setRowCount(0);
-            for (BookingRequest r : app.bookingRequestService.pending()) {
-                pendingAdminModel.addRow(new Object[]{
-                        r.getId(), r.getUsername(), r.getRoomId(),
-                        r.getStart().toString(), r.getEnd().toString(), r.getStatus()});
-            }
-        }
-        if (session.canRequestBooking() && requestsModel != null) {
-            requestsModel.setRowCount(0);
-            for (BookingRequest r : app.bookingRequestService.forUser(session.username())) {
-                requestsModel.addRow(new Object[]{
-                        r.getId(), r.getRoomId(),
-                        r.getStart().toString(), r.getEnd().toString(), r.getStatus()});
-            }
         }
     }
 
@@ -336,12 +235,9 @@ public class RoomsPanel extends JPanel {
         d.setVisible(true);
     }
 
-    /**
-     * @param directBooking true for staff (immediate booking); false for student (request for approval).
-     */
-    private void showBookingDialog(String roomId, boolean directBooking) {
+    private void showBookingDialog(String roomId) {
         JDialog d = new JDialog(JOptionPane.getFrameForComponent(this), true);
-        d.setTitle(directBooking ? "Book room " + roomId : "Request booking — " + roomId);
+        d.setTitle("Book room " + roomId + " — time slots");
         JPanel p = new JPanel(new GridBagLayout());
         GridBagConstraints g = new GridBagConstraints();
         g.insets = new Insets(4, 4, 4, 4);
@@ -377,11 +273,6 @@ public class RoomsPanel extends JPanel {
         JSpinner weeksSp = new JSpinner(new SpinnerNumberModel(4, 1, 52, 1));
         weeksSp.setEnabled(false);
         recurring.addActionListener(e -> weeksSp.setEnabled(recurring.isSelected()));
-        if (!directBooking) {
-            recurring.setEnabled(false);
-            recurring.setSelected(false);
-            weeksSp.setEnabled(false);
-        }
 
         g.gridx = 0;
         g.gridy = 0;
@@ -415,9 +306,9 @@ public class RoomsPanel extends JPanel {
         p.add(hint, g);
 
         JPanel bt = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton ok = new JButton(directBooking ? "Book" : "Submit request");
+        JButton ok = new JButton("Book");
         ok.addActionListener(e -> {
-            LocalDate day = DateTimeUtil.toLocalDate((Date) dateSp.getValue());
+            LocalDate day = BOOKING_DATE.toLocalDate(dateSp.getValue());
             TimeSlot first = (TimeSlot) startCombo.getSelectedItem();
             TimeSlot last = (TimeSlot) endCombo.getSelectedItem();
             if (first == null || last == null) {
@@ -431,21 +322,16 @@ public class RoomsPanel extends JPanel {
                 return;
             }
             java.util.Optional<String> err;
-            if (directBooking) {
-                if (recurring.isSelected()) {
-                    int w = ((Number) weeksSp.getValue()).intValue();
-                    err = app.bookingService.bookRecurring(roomId, session.username(), s, en, w);
-                } else {
-                    err = app.bookingService.book(roomId, session.username(), s, en);
-                }
+            if (recurring.isSelected()) {
+                int w = ((Number) weeksSp.getValue()).intValue();
+                err = app.bookingService.bookRecurring(roomId, session.username(), s, en, w);
             } else {
-                err = app.bookingRequestService.submit(roomId, session.username(), s, en);
+                err = app.bookingService.book(roomId, session.username(), s, en);
             }
             if (err.isPresent()) {
                 JOptionPane.showMessageDialog(d, err.get(), "Booking failed", JOptionPane.WARNING_MESSAGE);
             } else {
                 refreshBookings();
-                refreshBookingRequests();
                 d.dispose();
             }
         });

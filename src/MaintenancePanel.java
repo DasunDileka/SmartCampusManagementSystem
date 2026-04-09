@@ -44,7 +44,7 @@ public class MaintenancePanel extends JPanel {
 
         JPanel south = new JPanel(new BorderLayout(8, 8));
 
-        if (session.isStaff()) {
+        if (!session.isAdmin()) {
             south.setBorder(BorderFactory.createTitledBorder("Report an issue"));
             JPanel form = new JPanel(new GridBagLayout());
             GridBagConstraints g = new GridBagConstraints();
