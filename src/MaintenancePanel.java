@@ -20,13 +20,13 @@ import javax.swing.table.DefaultTableModel;
 public class MaintenancePanel extends JPanel {
 
     private final Session session;
-    private final AppServices app;
+    private final CampusManagementFacade campus;
     private final DefaultTableModel model;
     private final JTable table;
 
-    public MaintenancePanel(Session session, AppServices app) {
+    public MaintenancePanel(Session session, CampusManagementFacade campus) {
         this.session = session;
-        this.app = app;
+        this.campus = campus;
         setLayout(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
@@ -88,7 +88,7 @@ public class MaintenancePanel extends JPanel {
                     JOptionPane.showMessageDialog(this, "Enter a description.");
                     return;
                 }
-                app.maintenanceService.report(room, text, (Urgency) urgCombo.getSelectedItem(),
+                campus.maintenanceService.report(room, text, (Urgency) urgCombo.getSelectedItem(),
                         session.username());
                 desc.setText("");
                 refreshTable();
@@ -104,7 +104,8 @@ public class MaintenancePanel extends JPanel {
             g.insets = new Insets(4, 4, 4, 4);
             g.anchor = GridBagConstraints.LINE_END;
             JTextField assignField = new JTextField(16);
-            JComboBox<RequestStatus> statusCombo = new JComboBox<>(RequestStatus.values());
+            JComboBox<RequestStatus> statusCombo = new JComboBox<>(new RequestStatus[]{
+                    RequestStatus.PENDING, RequestStatus.ASSIGNED, RequestStatus.COMPLETED});
             g.gridx = 0;
             g.gridy = 0;
             admin.add(new JLabel("Assign to:"), g);
@@ -127,7 +128,7 @@ public class MaintenancePanel extends JPanel {
                 String id = (String) model.getValueAt(row, 0);
                 String assign = assignField.getText();
                 RequestStatus st = (RequestStatus) statusCombo.getSelectedItem();
-                app.maintenanceService.updateAdmin(id, st, assign).ifPresentOrElse(
+                campus.maintenanceService.updateAdmin(id, st, assign).ifPresentOrElse(
                         msg -> JOptionPane.showMessageDialog(this, msg, "Update", JOptionPane.WARNING_MESSAGE),
                         () -> {
                             refreshTable();
@@ -146,7 +147,7 @@ public class MaintenancePanel extends JPanel {
 
     private void refreshRoomCombo(JComboBox<String> combo) {
         combo.removeAllItems();
-        for (Room r : app.roomService.activeRooms()) {
+        for (Room r : campus.roomService.activeRooms()) {
             combo.addItem(r.getId());
         }
     }
@@ -154,8 +155,8 @@ public class MaintenancePanel extends JPanel {
     private void refreshTable() {
         model.setRowCount(0);
         List<MaintenanceRequest> list = session.isAdmin()
-                ? app.maintenanceService.all()
-                : app.maintenanceService.forUser(session.username());
+                ? campus.maintenanceService.all()
+                : campus.maintenanceService.forUser(session.username());
         for (MaintenanceRequest r : list) {
             if (session.isAdmin()) {
                 model.addRow(new Object[]{
