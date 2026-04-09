@@ -4,15 +4,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.swing.SwingUtilities;
 
 /**
- * Subject in the Observer pattern: publishes {@link Notification} events to registered listeners.
+ * Behavioural — Observer pattern — <em>Subject</em>:
+ * <ul>
+ *   <li>{@link #subscribe(NotificationListener)} / {@link #unsubscribe(NotificationListener)} register observers.</li>
+ *   <li>{@link #publish(Notification)} notifies all observers (e.g. {@code NotificationsPanel}) of an event.</li>
+ * </ul>
+ * UI panels implement {@link NotificationListener} and update when notifications arrive, without the
+ * publishers (booking, maintenance, etc.) depending on concrete Swing classes.
  */
 public class NotificationBus {
 
     /** Recipients with this key are delivered to every admin session listener. */
     public static final String ADMINS_BROADCAST = "@admins";
-
-    /** Campus-wide announcements to all student sessions. */
-    public static final String STUDENTS_BROADCAST = "@students";
 
     private final List<NotificationListener> listeners = new CopyOnWriteArrayList<>();
 

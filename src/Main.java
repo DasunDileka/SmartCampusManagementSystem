@@ -9,7 +9,7 @@ public class Main {
             // fall back to default LAF
         }
 
-        AppServices app = AppServices.get();
+        AppServices app = AppServicesFactory.getServices();
         SwingUtilities.invokeLater(() -> {
             LoginFrame frame = new LoginFrame(app);
             frame.setVisible(true);
