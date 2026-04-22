@@ -28,5 +28,8 @@ public final class AppServices {
         roomService.addRoom(new Room("A101", 30, "Projector, Whiteboard", true));
         roomService.addRoom(new Room("B204", 12, "TV, HDMI", true));
         roomService.addRoom(new Room("C-LAB", 24, "Computers (24)", true));
+        roomService.addRoom(new Room("A001", 30, "Projector, Whiteboard", true));
+        roomService.addRoom(new Room("B001", 12, "TV, HDMI", true));
+        roomService.addRoom(new Room("C001", 24, "Computers (24)", true));
     }
 }
